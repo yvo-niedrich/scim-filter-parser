@@ -2,14 +2,17 @@
 
 namespace Tests\Tmilos\ScimFilterParser;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
+use PHPUnit\Framework\TestCase;
 use Tmilos\ScimFilterParser\Ast\Path;
 use Tmilos\ScimFilterParser\Error\FilterException;
 use Tmilos\ScimFilterParser\Mode;
 use Tmilos\ScimFilterParser\Parser;
 
-class ParserPathModeTest extends \PHPUnit_Framework_TestCase
+class ParserPathModeTest extends TestCase
 {
-    public function valid_path_provider()
+    public static function valid_path_provider()
     {
         return [
             [
@@ -44,7 +47,7 @@ class ParserPathModeTest extends \PHPUnit_Framework_TestCase
             ],
             [
                 'members[value eq "2819c223-7f76-453a-919d-413861904646"].displayName',
-                'Path' => [
+                [
                     'ValuePath' => [
                         ['AttributePath' => 'members'],
                         ['ComparisonExpression' => 'value eq 2819c223-7f76-453a-919d-413861904646']
@@ -54,7 +57,7 @@ class ParserPathModeTest extends \PHPUnit_Framework_TestCase
             ],
             [
                 'foo.bar.baz[value eq "2819c223-7f76-453a-919d-413861904646"].displayName',
-                'Path' => [
+                [
                     'ValuePath' => [
                         ['AttributePath' => 'foo.bar.baz'],
                         ['ComparisonExpression' => 'value eq 2819c223-7f76-453a-919d-413861904646']
@@ -65,9 +68,7 @@ class ParserPathModeTest extends \PHPUnit_Framework_TestCase
         ];
     }
 
-    /**
-     * @dataProvider valid_path_provider
-     */
+    #[DataProvider('valid_path_provider')]
     public function test_valid_path($pathString, array $expectedDump)
     {
         $parser = $this->getParser();
@@ -76,7 +77,16 @@ class ParserPathModeTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf(Path::class, $node);
     }
 
-    public function invalid_path_provider()
+    #[TestWith(['roles[primary eq "True"]', true])]
+    #[TestWith(['roles[primary eq "true"]', true])]
+    #[TestWith(['roles[primary eq "False"]', false])]
+    #[TestWith(['roles[primary eq "false"]', false])]
+    public function test_type_juggling(string $filter, bool $expected)
+    {
+        $this->assertSame($expected, $this->getParser()->parse($filter)->valuePath->getFilter()->compareValue);
+    }
+
+    public static function invalid_path_provider()
     {
         return [
             ['userName eq "bjensen"', "[Syntax Error] line 0, col 8: Error: Expected end of input, got ' '"],
@@ -85,9 +95,7 @@ class ParserPathModeTest extends \PHPUnit_Framework_TestCase
         ];
     }
 
-    /**
-     * @dataProvider invalid_path_provider
-     */
+    #[DataProvider('invalid_path_provider')]
     public function test_invalid_path($pathString, $expectedMessage, $expectedException = FilterException::class)
     {
         $this->expectException($expectedException);

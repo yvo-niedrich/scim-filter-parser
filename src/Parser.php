@@ -30,11 +30,7 @@ class Parser
     /** @var bool */
     private $inValuePath;
 
-    /**
-     * @param Mode    $mode
-     * @param Version $version
-     */
-    public function __construct(Mode $mode = null, Version $version = null)
+    public function __construct(?Mode $mode = null, ?Version $version = null)
     {
         $this->lexer = new Lexer(new LexerArrayConfig(LexerConfigFactory::getConfig()));
         $this->version = $version ?: Version::V2();
@@ -297,6 +293,15 @@ class Parser
         $this->match($this->lexer->getLookahead()->getName());
 
         $value = json_decode($this->lexer->getToken()->getValue());
+
+        if (!strcasecmp($value, 'true')) {
+            return true;
+        }
+
+        if (!strcasecmp($value, 'false')) {
+            return false;
+        }
+
         if (preg_match(
                 '/^(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)T(\\d\\d):(\\d\\d):(\\d\\d)(?:\\.\\d+)?Z$/D',
                 $value,
@@ -322,7 +327,7 @@ class Parser
      */
     private function isValuePathIncoming()
     {
-        $tokenAfterAttributePath = $this->lexer->peekWhileTokens([Tokens::T_NAME, Tokens::T_DOT]);
+        $tokenAfterAttributePath = $this->lexer->peekWhileTokens([Tokens::T_NAME, Tokens::T_COLON, Tokens::T_NUMBER, Tokens::T_DOT]);
         $this->lexer->resetPeek();
 
         return $tokenAfterAttributePath ? $tokenAfterAttributePath->is(Tokens::T_BRACKET_OPEN) : false;
@@ -371,7 +376,7 @@ class Parser
         }
     }
 
-    private function syntaxError($expected = '', Token $token = null)
+    private function syntaxError($expected = '', ?Token $token = null)
     {
         if (null === $token) {
             $token = $this->lexer->getLookahead();
