@@ -13,7 +13,7 @@ namespace Tmilos\ScimFilterParser\Ast;
 
 class ComparisonExpression extends Factor
 {
-    /** @var AttributePath */
+    /** @var ComparablePath */
     public $attributePath;
 
     /** @var string */
@@ -23,24 +23,30 @@ class ComparisonExpression extends Factor
     public $compareValue;
 
     /**
-     * @param AttributePath $attributePath
-     * @param string        $operator
-     * @param mixed         $compareValue
+     * @param ComparablePath $attributePath
+     * @param string         $operator
+     * @param mixed          $compareValue
      */
-    public function __construct(AttributePath $attributePath, $operator, $compareValue = null)
+    public function __construct(ComparablePath $attributePath, $operator, $compareValue = null)
     {
         $this->attributePath = $attributePath;
         $this->operator = $operator;
         $this->compareValue = $compareValue;
     }
 
+    /**
+     * @return mixed
+     */
+    private function getCompareValueToString()
+    {
+        return $this->compareValue instanceof \DateTime ? $this->compareValue->format('Y-m-d\TH:i:s\Z') : $this->compareValue;
+    }
+
     public function __toString()
     {
-        if ($this->operator === 'pr') {
-            return sprintf('%s %s', $this->attributePath, $this->operator);
-        } else {
-            return sprintf('%s %s %s', $this->attributePath, $this->operator, $this->compareValue instanceof \DateTime ? $this->compareValue->format('Y-m-d\TH:i:s\Z') : $this->compareValue);
-        }
+        return $this->operator === 'pr'
+            ? sprintf('%s %s', $this->attributePath, $this->operator)
+            : sprintf('%s %s %s', $this->attributePath, $this->operator, $this->getCompareValueToString());
     }
 
     public function dump()

@@ -179,7 +179,9 @@ class Parser
             $this->match(Tokens::T_PAREN_CLOSE);
 
             return new Ast\Negation($filter);
-        } elseif ($this->lexer->isNextToken(Tokens::T_PAREN_OPEN)) {
+        }
+
+        if ($this->lexer->isNextToken(Tokens::T_PAREN_OPEN)) {
             // ( filter )
             $this->match(Tokens::T_PAREN_OPEN);
             $filter = $this->disjunction();
@@ -188,10 +190,21 @@ class Parser
             return $filter;
         }
 
-        if ($this->version->equals(Version::V2()) && !$this->inValuePath) {
-            if ($this->isValuePathIncoming()) {
-                return $this->valuePath();
+        if ($this->version->equals(Version::V2()) && !$this->inValuePath && $this->isValuePathIncoming()) {
+            $valuePath = $this->valuePath();
+
+            if ($valuePath->getSubAttributePath() !== null) {
+                $this->match(Tokens::T_SP);
+                $operator = $this->comparisonOperator();
+                $compareValue = null;
+                if ($operator !== 'pr') {
+                    $this->match(Tokens::T_SP);
+                    $compareValue = $this->compareValue();
+                }
+                return new Ast\ComparisonExpression($valuePath, $operator, $compareValue);
             }
+
+            return $valuePath;
         }
 
         return $this->comparisionExpression();
@@ -209,7 +222,13 @@ class Parser
         $this->match(Tokens::T_BRACKET_CLOSE);
         $this->inValuePath = false;
 
-        return new Ast\ValuePath($attributePath, $filter);
+        $subAttributePath = null;
+        if ($this->mode->equals(Mode::FILTER) && $this->lexer->isNextToken(Tokens::T_DOT)) {
+            $this->match(Tokens::T_DOT);
+            $subAttributePath = $this->attributePath();
+        }
+
+        return new Ast\ValuePath($attributePath, $filter, $subAttributePath);
     }
 
     /**
@@ -223,7 +242,7 @@ class Parser
         $operator = $this->comparisonOperator();
 
         $compareValue = null;
-        if ($operator != 'pr') {
+        if ($operator !== 'pr') {
             $this->match(Tokens::T_SP);
             $compareValue = $this->compareValue();
         }

@@ -246,6 +246,26 @@ class ParserFilterModeTest extends TestCase
                     ]
                 ]
             ],
+
+            [
+                'emails[type eq "work"].value eq "foo@bar.net"',
+                ['ComparisonExpression' => 'emails[type eq work].value eq foo@bar.net']
+            ],
+
+            [
+                'addresses[type eq "work"].streetAddress co "main"',
+                ['ComparisonExpression' => 'addresses[type eq work].streetAddress co main']
+            ],
+
+            [
+                'userName eq "john" and emails[type eq "work"].value co "@example.com"',
+                [
+                    'Conjunction' => [
+                        ['ComparisonExpression' => 'userName eq john'],
+                        ['ComparisonExpression' => 'emails[type eq work].value co @example.com']
+                    ]
+                ]
+            ],
         ];
     }
 
@@ -285,12 +305,24 @@ class ParserFilterModeTest extends TestCase
         $this->getParser(Version::V1())->parse('emails[type eq "work"]');
     }
 
-    public function test_throws_error_for_value_path_with_attribute_path_in_filter_mode()
+    public function test_complex_comparison_has_value_path_structure()
     {
-        $this->expectException(FilterException::class);
-        $this->expectExceptionMessage("[Syntax Error] line 0, col 25: Error: Expected end of input, got '.'");
+        $parser = new Parser(Mode::FILTER());
+        $node = $parser->parse('emails[type eq "work"].value eq "foo@bar.net"');
 
-        $this->getParser()->parse('addresses[type eq "work"].streetAddress co "main"');
+        $this->assertInstanceOf(\Tmilos\ScimFilterParser\Ast\ComparisonExpression::class, $node);
+        $this->assertInstanceOf(\Tmilos\ScimFilterParser\Ast\ValuePath::class, $node->attributePath);
+
+        /** @var \Tmilos\ScimFilterParser\Ast\ValuePath $valuePath */
+        $valuePath = $node->attributePath;
+        $this->assertNotNull($valuePath->getFilter());
+        $this->assertEquals('emails', (string) $valuePath->getAttributePath());
+        $this->assertInstanceOf(\Tmilos\ScimFilterParser\Ast\AttributePath::class, $valuePath->getSubAttributePath());
+        $this->assertEquals('value', (string) $valuePath->getSubAttributePath());
+
+        // The comparison operator and value
+        $this->assertEquals('eq', $node->operator);
+        $this->assertEquals('foo@bar.net', $node->compareValue);
     }
 
     /**

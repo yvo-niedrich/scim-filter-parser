@@ -11,7 +11,7 @@
 
 namespace Tmilos\ScimFilterParser\Ast;
 
-class AttributePath extends Node
+class AttributePath extends Node implements ComparablePath
 {
     /** @var string */
     public $schema;

@@ -11,22 +11,27 @@
 
 namespace Tmilos\ScimFilterParser\Ast;
 
-class ValuePath extends Factor
+class ValuePath extends Factor implements ComparablePath
 {
     /** @var AttributePath */
-    private $attributePath;
+    public $attributePath;
 
     /** @var Filter */
-    private $filter;
+    public $filter;
+
+    /** @var AttributePath|null */
+    public $subAttributePath;
 
     /**
-     * @param AttributePath $attributePath
-     * @param Filter        $filter
+     * @param AttributePath      $attributePath
+     * @param Filter             $filter
+     * @param AttributePath|null $subAttributePath
      */
-    public function __construct(AttributePath $attributePath, Filter $filter)
+    public function __construct(AttributePath $attributePath, Filter $filter, ?AttributePath $subAttributePath = null)
     {
         $this->attributePath = $attributePath;
         $this->filter = $filter;
+        $this->subAttributePath = $subAttributePath;
     }
 
     /**
@@ -45,18 +50,36 @@ class ValuePath extends Factor
         return $this->filter;
     }
 
+    /**
+     * @return AttributePath|null
+     */
+    public function getSubAttributePath()
+    {
+        return $this->subAttributePath;
+    }
+
     public function __toString()
     {
-        return sprintf('%s[%s]', $this->attributePath, $this->filter);
+        $base = sprintf('%s[%s]', $this->attributePath, $this->filter);
+        if ($this->subAttributePath !== null) {
+            return sprintf('%s.%s', $base, $this->subAttributePath);
+        }
+        return $base;
     }
 
     public function dump()
     {
-        return [
+        $dump = [
             'ValuePath' => [
                 $this->attributePath->dump(),
                 $this->filter->dump(),
             ],
         ];
+
+        if ($this->subAttributePath !== null) {
+            $dump['ValuePath'][] = $this->subAttributePath->dump();
+        }
+
+        return $dump;
     }
 }
